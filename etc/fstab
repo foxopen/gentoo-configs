@@ -1,0 +1,7 @@
+LABEL="boot"		/boot		ext2		noauto,noatime	 0 0
+LABEL="root"		/			ext3		defaults,noatime 0 0
+LABEL="home"		/home		ext3		defaults,noatime 0 0
+LABEL="swap"		none		swap		sw				 0 0
+
+LABEL="windows"		/mnt/windows	ntfs-3g	defaults	 	 0 0
+/dev/cdrom			/mnt/cdrom		auto	noauto,ro	 	 0 0
