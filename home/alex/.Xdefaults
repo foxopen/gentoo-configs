@@ -1,0 +1,101 @@
+! --- special colors ---
+
+*background: #0d1926
+*foreground: #d9e6f2
+
+! --- standard colors ---
+
+! black
+!*color0: #000000
+
+! bright_black
+!*color8: #262626
+
+! red
+!*color1: #b87a7a
+
+! bright_red
+!*color9: #dbbdbd
+
+! green
+!*color2: #7ab87a
+
+! bright_green
+!*color10: #bddbbd
+
+! yellow
+!*color3: #b8b87a
+
+! bright_yellow
+!*color11: #dbdbbd
+
+! blue
+!*color4: #7a7ab8
+
+! bright_blue
+!*color12: #bdbddb
+
+! magenta
+!*color5: #b87ab8
+
+! bright_magenta
+!*color13: #dbbddb
+
+! cyan
+!*color6: #7ab8b8
+
+! bright_cyan
+!*color14: #bddbdb
+
+! white
+!*color7: #d9d9d9
+
+! bright_white
+!*color15: #ffffff
+
+! special
+!*.foreground:   #e1e1e1
+!*.background:   #2a2e35
+*.cursorColor:  #e1e1e1
+
+! black
+*.color0:       #5a5a5a
+*.color8:       #8c8c8c
+
+! red
+*.color1:	#de8990
+*.color9:	#d0a8ab
+
+! green
+*.color2:	#94daa9
+*.color10:	#bae8d2
+
+! yellow
+*.color3:	#dee7aa
+*.color11:	#d7c96b
+
+! blue
+*.color4:	#9cdbdf
+*.color12:	#6cb4dd
+
+! magenta
+*.color5:	#cca8c9
+*.color13:	#db79bf
+
+! cyan
+*.color6:	#9ad4c8
+*.color14:	#59b0b2
+
+! white
+*.color7:	#e1e1e1
+*.color15:	#f0f0f0
+
+
+
+! URxvt.font: xft:monaco:size=10:antialias=true
+URxvt.font: xft:Monaco for Powerline:regular:size=10:antialias=true
+
+URxvt.scrollBar: false
+URxvt.cursorBlink: true
+URxvt.urlLauncher: /usr/bin/chrome
+URxvt.letterSpace: -1

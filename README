@@ -1,0 +1,2 @@
+create an archive of these files with 
+tar -cvf gentoo-config.tar /path/to/here
