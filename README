@@ -1,4 +1,23 @@
+This is my personal set up for Gentoo GNU/Linux
+
+*The following is a work in progress and not complete*
+
 Create an archive of these files with 
-tar -cvf gentoo-config.tar /path/to/here
+tar -cvf gentoo-config.tar /path/to/thesefiles
 
 Then unzip to /
+
+Then do the following:
+
+Refresh font cache
+	fc-cache -vf
+	
+Refresh locales
+	locale-gen
+	
+Refresh bash config
+	source /home/alex/.bashrc
+
+Set up timezone
+	cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+	env-update && source /etc/profile
