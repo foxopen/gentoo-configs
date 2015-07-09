@@ -2,6 +2,14 @@ This is my personal set up for Gentoo GNU/Linux
 
 *The following is a work in progress and not complete*
 
+Before proceeding be sure that the following are installed
+sudo
+mpd
+ncmpcpp
+urxvt-unicode
+
+
+
 Create an archive of these files with 
 tar -cvf gentoo-config.tar /path/to/thesefiles
 
