@@ -18,7 +18,7 @@ install_check () {
   fi
 }
 
-# Check that the script is running as the superuser since we need
+# Check that the script is running as superuser since we need
 # permission to edit files in /etc and /usr.
 if [ "$EUID" -ne 0 ]; then 
   $DIALOG --backtitle "$TITLE" \
@@ -35,18 +35,17 @@ $DIALOG --backtitle "$TITLE" \
 is_gentoo=$?
 exit_on_esc $is_gentoo
 
-# If the OS is Gentoo then we need to select one of the supported CPU's
-# to specify which make.conf to use.
+# If the OS is Gentoo then we try to detect the CPU and see if this 
+# script supports it.
 if (( $is_gentoo == 0 )); then
   while [ -z "$cpu_type" ]; do
-    $DIALOG --backtitle "$TITLE" \
-            --title "Configuring make.conf" \
-            --radiolist "Select your CPU by pressing [SPACE]" 10 50 10 \
-                      "1" "i7-2600K" off \
-                      "2" "T2300" off \
-                      "3" "None of these" on 2> $TMP_FILE
-    exit_on_esc $?
-	cpu_type=`cat $TMP_FILE`
+    if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
+      cpu_type="T2300"
+    elif [[ $(cat /proc/cpuinfo) == *"i7-2600K"* ]]; then
+      cpu_type="i7-2600K"
+    else
+      cpu_type="Your CPU is not supported. Please write your own make.conf"
+    fi
   done
 fi
 
