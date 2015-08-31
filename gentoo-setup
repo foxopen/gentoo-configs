@@ -11,10 +11,20 @@ exit_on_esc () {
   fi
 }
 
-# Check if a package is installed
+# Check if a package is installed and return 1 if it is, install if it
+# isn't and if the  2nd parameter is true
 install_check () {
   if [[ $(equery -q l $1) =~ . ]]; then 
     echo "1"
+  else
+    if [[ $2 ]]; then
+      { 
+      emerge -qn $1 
+      } &> /dev/null
+      echo "1"
+    else
+      echo "0"
+    fi
   fi
 }
 
@@ -35,25 +45,109 @@ $DIALOG --backtitle "$TITLE" \
 is_gentoo=$?
 exit_on_esc $is_gentoo
 
+# Choose name for a new user
+$DIALOG --backtitle "$TITLE" \
+        --title "Create a user" \
+	--inputbox "Username:" 7 50 2>$TMP_FILE
+exit_on_esc $?
+username=`cat $TMP_FILE`
+
+# Choose "name of computer" for hostname
+$DIALOG --backtitle "$TITLE" \
+        --title "Enter name of computer" \
+	--inputbox "Hostname:" 7 50 2>$TMP_FILE
+exit_on_esc $?
+hostname=`cat $TMP_FILE`
+
+# Select which software to install and configure for the user
+$DIALOG --backtitle "$TITLE" \
+        --title "Install and configure common packages" \
+	--checklist "Recommended packages are already selected" 20 50 20 \
+	"1" "sudo" on \
+	"2" "grub" on \
+	"3" "gentoo-sources" on 
+	"4" "genkernel" 2>$TMP_FILE
+exit_on_esc $?
+
+
 # If the OS is Gentoo then we try to detect the CPU and see if this 
 # script supports it.
 if (( $is_gentoo == 0 )); then
-  while [ -z "$cpu_type" ]; do
-    if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
-      cpu_type="T2300"
-    elif [[ $(cat /proc/cpuinfo) == *"i7-2600K"* ]]; then
-      cpu_type="i7-2600K"
-    else
-      cpu_type="Your CPU is not supported. Please write your own make.conf"
-    fi
-  done
+  if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
+    cpu_type="T2300"
+  elif [[ $(cat /proc/cpuinfo) == *"i7-2600K"* ]]; then
+    cpu_type="i7-2600K"
+  else
+    cpu_type="Your CPU is not supported. Please write your own make.conf"
+  fi
 fi
 
-if [[ $(install_check nano) ]]; then
-  echo "success"
-  else
-  echo "failure"
-fi
+n=20
+
+setup_locales () {
+  echo "en_US ISO-8859-1" > /etc/locale.gen
+  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+  locale-gen # be sure this runs
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_sudo () {
+  install_check "sudo" true 
+  if ! grep -Fxq "$username ALL=(ALL) ALL" /etc/sudoers; then
+    echo "$username ALL=(ALL) ALL" >> /etc/sudoers
+  fi
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_portage () {
+  if [ ! -d "/usr/portage" ]; then
+    mkdir /usr/portage
+  fi
+  # emerge --sync # uncomment in final
+  set=$((`eselect profile list | grep -n "default.*plasma$" | cut -d : -f 1`-1))
+  if [[ ! $set -eq -1 ]]; then
+    eval "eselect profile set $set"
+  fi
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_time () { 
+  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_kernel () {
+  # emerge gentoo-sources # uncomment in final
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+main_install () {
+  setup_sudo
+  setup_locales
+  setup_portage
+  setup_time
+  setup_kernel
+}
+
+
+COUNT=0
+(
+main_install
+echo "XXX"
+echo "Completed."
+echo "XXX"
+) |
+$DIALOG --backtitle "$TITLE" \
+        --title "Installing and configuring packages" \
+	--gauge "Please wait while installation is completed." 20 50 0
+
 
 echo $is_gentoo
 echo $cpu_type
+echo $username
+echo $hostname
