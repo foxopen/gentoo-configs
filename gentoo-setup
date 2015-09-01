@@ -1,15 +1,4 @@
 #!/bin/bash
-DIALOG=${DIALOG=dialog}
-TMP_FILE=/tmp/gentoo-setup.$$.tmp
-TITLE="Alex's Linux Configurator"
-
-# End setup if [ESCAPE] is pressed
-exit_on_esc () {
-  if (( $1 == 255 )); then
-    echo "quitting setup"
-    exit 
-  fi
-}
 
 # Check if a package is installed and return 1 if it is, install if it
 # isn't and if the  2nd parameter is true
@@ -31,62 +20,30 @@ install_check () {
 # Check that the script is running as superuser since we need
 # permission to edit files in /etc and /usr.
 if [ "$EUID" -ne 0 ]; then 
-  $DIALOG --backtitle "$TITLE" \
-          --title "Superuser not detected" \
-          --msgbox "\nPlease run as root." 7 50 
+  echo "Exiting... please run as root."
   exit
 fi
 
-# Check to see if Gentoo is the OS so we can configure make.conf if so.
-# This may be automated in the future.
-$DIALOG --backtitle "$TITLE" \
-        --title "Distro check" \
-        --yesno "\nIs this a Gentoo install?" 7 50
-is_gentoo=$?
-exit_on_esc $is_gentoo
-
 # Choose name for a new user
-$DIALOG --backtitle "$TITLE" \
-        --title "Create a user" \
-	--inputbox "Username:" 7 50 2>$TMP_FILE
-exit_on_esc $?
-username=`cat $TMP_FILE`
+echo -n "Enter name for a new user. Username:"
+read username
 
 # Choose "name of computer" for hostname
-$DIALOG --backtitle "$TITLE" \
-        --title "Enter name of computer" \
-	--inputbox "Hostname:" 7 50 2>$TMP_FILE
-exit_on_esc $?
-hostname=`cat $TMP_FILE`
+echo -n "Enter name for computer.   Hostname:"
+read hostname
 
 # Enter root password (this is different than user passwords)
-$DIALOG --backtitle "$TITLE" \
-        --title "Enter root password" \
-	--inputbox "Root password:" 7 50 2>$TMP_FILE
-exit_on_esc $?
-root_passwd=`cat $TMP_FILE`
-
-# Select which software to install and configure for the user
-$DIALOG --backtitle "$TITLE" \
-        --title "Install and configure common packages" \
-	--checklist "Recommended packages are already selected" 20 50 20 \
-	"1" "sudo" on \
-	"2" "grub" on \
-	"3" "gentoo-sources" on 
-	"4" "genkernel" 2>$TMP_FILE
-exit_on_esc $?
-
+echo -n "Enter root password.       Password:"
+read root_passwd
 
 # If the OS is Gentoo then we try to detect the CPU and see if this 
 # script supports it.
-if (( $is_gentoo == 0 )); then
-  if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
-    cpu_type="T2300"
-  elif [[ $(cat /proc/cpuinfo) == *"i7-2600K"* ]]; then
-    cpu_type="i7-2600K"
-  else
-    cpu_type="Your CPU is not supported. Please write your own make.conf"
-  fi
+if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
+  cpu_type="T2300"
+elif [[ $(cat /proc/cpuinfo) == *"i7-2600K"* ]]; then
+  cpu_type="i7-2600K"
+else
+  cpu_type="Your CPU is not supported. Please write your own make.conf"
 fi
 
 n=9
@@ -95,14 +52,10 @@ setup_locales () {
   echo "en_US ISO-8859-1" > /etc/locale.gen
   echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
   #locale-gen # uncomment in final
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_root () {
-  # echo "root:$root_passwd" | chpasswd # uncomment in final
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
+  echo "root:$root_passwd" | chpasswd # uncomment in final
 } &> /dev/null
 
 setup_sudo () {
@@ -110,9 +63,7 @@ setup_sudo () {
   if ! grep -Fxq "$username ALL=(ALL) ALL" /etc/sudoers; then
     echo "$username ALL=(ALL) ALL" >> /etc/sudoers
   fi
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_portage () {
   if [ ! -d "/usr/portage" ]; then
@@ -123,27 +74,22 @@ setup_portage () {
   if [[ ! $set -eq -1 ]]; then
     eval "eselect profile set $set"
   fi
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_time () { 
-  # cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime # uncomment in final
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime # uncomment in final
+} &> /dev/null
 
 setup_kernel () {
-  # emerge gentoo-sources # uncomment in final
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+  install_check "gentoo-sources" # uncomment in final
+  eval "eselect kernel set 1"
+  install_check "genkernel" true
+  eval "genkernel --splash --install all"
+} &> /dev/null
 
 setup_hostname () {
-  # echo "hostname=\"$hostname\"" > /etc/conf.d/hostname # uncomment in final
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+  echo "hostname=\"$hostname\"" > /etc/conf.d/hostname # uncomment in final
+} &> /dev/null
 
 setup_ethernet () {
   install_check "dhcpcd" true
@@ -155,58 +101,54 @@ setup_ethernet () {
   else
     rc-update add net.eth0 default
   fi
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_logger () {
   install_check "syslog-ng" true
   rc-update add syslog-ng default
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_cron () {
   install_check "vixie-cron" true
   rc-update add vixie-cron default
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
-}
+} &> /dev/null
 
 setup_grub () {
   install_check "grub" true
   mount /boot
+  grub2-install /dev/sda
   grub2-mkconfig -o /boot/grub/grub.cfg
-  COUNT=$(($COUNT + $n))
-  echo $COUNT
 } &> /dev/null
 
 main_install () {
+  echo -n "0%"
   setup_root
+  echo -en "\r6%"
   setup_sudo
+  echo -en "\r12%"
   setup_locales
+  echo -en "\r18%"
   setup_portage
+  echo -en "\r24%"
   setup_time
+  echo -en "\r30%"
   setup_kernel
+  echo -en "\r70%"
   setup_hostname
+  echo -en "\r76%"
   setup_ethernet
+  echo -en "\r82%"
   setup_logger
+  echo -en "\r88%"
   setup_cron
+  echo -en "\r94%"
   setup_grub
+  echo -e "\r100%"
 }
 
-
-COUNT=0
-(
+echo -e "Installing and configuring packages.\nPlease wait..."
 main_install
-echo "XXX"
-echo "Completed."
-echo "XXX"
-) |
-$DIALOG --backtitle "$TITLE" \
-        --title "Installing and configuring packages" \
-	--gauge "Please wait while installation is completed." 20 50 0
-
+echo "Installation completed." 
 
 echo $is_gentoo
 echo $cpu_type
