@@ -179,7 +179,7 @@ setup_grub () {
   grub2-mkconfig -o /boot/grub/grub.cfg
   COUNT=$(($COUNT + $n))
   echo $COUNT
-}
+} &> /dev/null
 
 main_install () {
   setup_root
