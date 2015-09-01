@@ -59,6 +59,13 @@ $DIALOG --backtitle "$TITLE" \
 exit_on_esc $?
 hostname=`cat $TMP_FILE`
 
+# Enter root password (this is different than user passwords)
+$DIALOG --backtitle "$TITLE" \
+        --title "Enter root password" \
+	--inputbox "Root password:" 7 50 2>$TMP_FILE
+exit_on_esc $?
+root_passwd=`cat $TMP_FILE`
+
 # Select which software to install and configure for the user
 $DIALOG --backtitle "$TITLE" \
         --title "Install and configure common packages" \
@@ -82,15 +89,21 @@ if (( $is_gentoo == 0 )); then
   fi
 fi
 
-n=20
+n=9
 
 setup_locales () {
   echo "en_US ISO-8859-1" > /etc/locale.gen
   echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-  locale-gen # be sure this runs
+  #locale-gen # uncomment in final
   COUNT=$(($COUNT + $n))
   echo $COUNT
 }
+
+setup_root () {
+  # echo "root:$root_passwd" | chpasswd # uncomment in final
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+} &> /dev/null
 
 setup_sudo () {
   install_check "sudo" true 
@@ -115,7 +128,7 @@ setup_portage () {
 }
 
 setup_time () { 
-  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+  # cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime # uncomment in final
   COUNT=$(($COUNT + $n))
   echo $COUNT
 }
@@ -126,12 +139,60 @@ setup_kernel () {
   echo $COUNT
 }
 
+setup_hostname () {
+  # echo "hostname=\"$hostname\"" > /etc/conf.d/hostname # uncomment in final
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_ethernet () {
+  install_check "dhcpcd" true
+  if [ ! -e /etc/init.d/net.eth0 ]; then
+    if [ -e /etc/init.d/net.lo ]; then
+      ln -s /etc/init.d/net.lo /etc/init.d/net.eth0
+      rc-update add net.eth0 default
+    fi
+  else
+    rc-update add net.eth0 default
+  fi
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_logger () {
+  install_check "syslog-ng" true
+  rc-update add syslog-ng default
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_cron () {
+  install_check "vixie-cron" true
+  rc-update add vixie-cron default
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
+setup_grub () {
+  install_check "grub" true
+  mount /boot
+  grub2-mkconfig -o /boot/grub/grub.cfg
+  COUNT=$(($COUNT + $n))
+  echo $COUNT
+}
+
 main_install () {
+  setup_root
   setup_sudo
   setup_locales
   setup_portage
   setup_time
   setup_kernel
+  setup_hostname
+  setup_ethernet
+  setup_logger
+  setup_cron
+  setup_grub
 }
 
 
@@ -151,3 +212,4 @@ echo $is_gentoo
 echo $cpu_type
 echo $username
 echo $hostname
+echo $root_passwd
