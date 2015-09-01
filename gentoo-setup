@@ -68,10 +68,10 @@ setup_root () {
   cp /etc/fstab /etc/fstab.copy
   if [[ "$cpu_type" == "i7-2600K" ]]; then
     cp etc/fstab /etc/fstab
-    cp etc/portage/make.conf
+    cp etc/portage/make.conf /etc/portage/make.conf
   else
     cp etc/fstab.laptop /etc/fstab
-    cp etc/portage/make.conf.laptop
+    cp etc/portage/make.conf.laptop /etc/portage/make.conf
   fi
 } &> /dev/null
 
