@@ -1,0 +1,32 @@
+CFLAGS="-O2 -march=prescott -pipe"
+CXXFLAGS="${CFLAGS}"
+CHOST="i686-pc-linux-gnu"
+MAKEOPTS="-j3"
+
+# instruction sets
+USE="bindist mmx sse sse2"
+
+# fonts
+USE="$USE truetype type1 cleartype corefonts infinality"
+
+# images
+USE="$USE png jpeg svg gif tiff"
+
+# audio
+USE="$USE alsa flac vorbis"
+
+# desktop
+USE="$USE X gtk gtk3 dbus gnome"
+
+# things we don't want
+USE="$USE -systemd"
+
+INPUT_DEVICES="eudev"
+VIDEO_CARDS="intel"
+LINGUAS="en en_US.utf8"
+PORTDIR="/usr/portage"
+DISTDIR="${PORTDIR}/distfiles"
+PKGDIR="${PORTDIR}/packages"
+
+GENTOO_MIRRORS="http://gentoo.llarian.net/ http://gentoo.gossamerhost.com http://gentoo.osuol.org/"
+

@@ -36,6 +36,15 @@ read hostname
 echo -n "Enter root password.       Password:"
 read root_passwd
 
+# Ask if wifi support is needed 
+echo "Do you need wifi support?"
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) wifi=1; break;;
+    No  ) wifi=0; break;;
+  esac
+done
+
 # If the OS is Gentoo then we try to detect the CPU and see if this 
 # script supports it.
 if [[ $(cat /proc/cpuinfo) == *"T2300"* ]]; then
@@ -46,16 +55,24 @@ else
   cpu_type="Your CPU is not supported. Please write your own make.conf"
 fi
 
-n=9
-
 setup_locales () {
   echo "en_US ISO-8859-1" > /etc/locale.gen
   echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-  #locale-gen # uncomment in final
+  locale-gen
 } &> /dev/null
 
 setup_root () {
-  echo "root:$root_passwd" | chpasswd # uncomment in final
+  echo "root:$root_passwd" | chpasswd
+  
+  # TODO: move all this to a better place
+  cp /etc/fstab /etc/fstab.copy
+  if [[ "$cpu_type" == "i7-2600K" ]]; then
+    cp etc/fstab /etc/fstab
+    cp etc/portage/make.conf
+  else
+    cp etc/fstab.laptop /etc/fstab
+    cp etc/portage/make.conf.laptop
+  fi
 } &> /dev/null
 
 setup_sudo () {
@@ -69,7 +86,7 @@ setup_portage () {
   if [ ! -d "/usr/portage" ]; then
     mkdir /usr/portage
   fi
-  # emerge --sync # uncomment in final
+  emerge --sync
   set=$((`eselect profile list | grep -n "default.*plasma$" | cut -d : -f 1`-1))
   if [[ ! $set -eq -1 ]]; then
     eval "eselect profile set $set"
@@ -77,18 +94,22 @@ setup_portage () {
 } &> /dev/null
 
 setup_time () { 
-  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime # uncomment in final
+  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
 } &> /dev/null
 
 setup_kernel () {
-  install_check "gentoo-sources" # uncomment in final
+  install_check "gentoo-sources"
   eval "eselect kernel set 1"
   install_check "genkernel" true
   eval "genkernel --splash --install all"
+
+  if [[ "$wifi" == "1" ]]; then
+    install_check "wicd" true 
+  fi
 } &> /dev/null
 
 setup_hostname () {
-  echo "hostname=\"$hostname\"" > /etc/conf.d/hostname # uncomment in final
+  echo "hostname=\"$hostname\"" > /etc/conf.d/hostname
 } &> /dev/null
 
 setup_ethernet () {
@@ -120,6 +141,15 @@ setup_grub () {
   grub2-mkconfig -o /boot/grub/grub.cfg
 } &> /dev/null
 
+setup_misc () {
+  echo "set bell-style none" >> /etc/inputrc
+  mkdir -p /home/$username/coding/git/mine
+  mkdir -p /home/$username/downloads
+  mkdir -p /home/$username/games
+  mkdir -p /home/$username/music
+  mkdir -p /home/$username/images
+}
+
 main_install () {
   echo -n "0%"
   setup_root
@@ -144,6 +174,7 @@ main_install () {
   echo -en "\r94%"
   setup_grub
   echo -e "\r100%"
+  setup_misc
 }
 
 echo -e "Installing and configuring packages.\nPlease wait..."
@@ -155,3 +186,4 @@ echo $cpu_type
 echo $username
 echo $hostname
 echo $root_passwd
+echo $wifi
