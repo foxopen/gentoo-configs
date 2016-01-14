@@ -16,7 +16,7 @@ USE="$USE png jpeg svg gif tiff"
 USE="$USE alsa flac vorbis"
 
 # desktop
-USE="$USE X gtk gtk3 dbus gnome"
+USE="$USE X dbus"
 
 # things we don't want
 USE="$USE -systemd"

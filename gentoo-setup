@@ -9,7 +9,7 @@ install_check () {
     if [[ $2 ]]; then
       { 
       emerge -qn $1 
-      } &> /dev/null
+      }
       echo "1"
     else
       echo "0"
@@ -23,6 +23,42 @@ if [ "$EUID" -ne 0 ]; then
   echo "Exiting... please run as root."
   exit
 fi
+
+# Exit if stage3 tarball hasn't been extracted
+echo "Have you partitioned your drive?"
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) break;;
+    No  ) exit;;
+  esac
+done
+
+# Exit if stage3 tarball hasn't been extracted
+echo "Have you extracted stage3 tarball to root directory and activated swap?"
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) break;;
+    No  ) exit;;
+  esac
+done
+
+# Exit if make.conf isn't set up
+echo "Have you set up make.conf?"
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) break;;
+    No  ) exit;;
+  esac
+done
+
+#Exit if /etc/fstab isn't set up
+echo "Have you set up /etc/fstab?"
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) break;;
+    No  ) exit;;
+  esac
+done
 
 # Choose name for a new user
 echo -n "Enter name for a new user. Username:"
@@ -40,8 +76,17 @@ read root_passwd
 echo "Do you need wifi support?"
 select yn in "Yes" "No"; do
   case $yn in
-    Yes ) wifi=1; break;;
-    No  ) wifi=0; break;;
+    Yes ) wifi_support=1; break;;
+    No  ) wifi_support=0; break;;
+  esac
+done
+
+# Ask if ntfs support is needed 
+echo "Do you need ntfs support? (yes to detect/mount windows drives")
+select yn in "Yes" "No"; do
+  case $yn in
+    Yes ) ntfs_support=1; break;;
+    No  ) ntfs_support=0; break;;
   esac
 done
 
@@ -55,65 +100,71 @@ else
   cpu_type="Your CPU is not supported. Please write your own make.conf"
 fi
 
-setup_locales () {
-  echo "en_US ISO-8859-1" > /etc/locale.gen
-  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-  locale-gen
-} &> /dev/null
-
-setup_root () {
-  echo "root:$root_passwd" | chpasswd
-  
-  # TODO: move all this to a better place
-  cp /etc/fstab /etc/fstab.copy
-  if [[ "$cpu_type" == "i7-2600K" ]]; then
-    cp etc/fstab /etc/fstab
-    cp etc/portage/make.conf /etc/portage/make.conf
-  else
-    cp etc/fstab.laptop /etc/fstab
-    cp etc/portage/make.conf.laptop /etc/portage/make.conf
-  fi
-} &> /dev/null
-
-setup_sudo () {
-  install_check "sudo" true 
-  if ! grep -Fxq "$username ALL=(ALL) ALL" /etc/sudoers; then
-    echo "$username ALL=(ALL) ALL" >> /etc/sudoers
-  fi
-} &> /dev/null
-
 setup_portage () {
   if [ ! -d "/usr/portage" ]; then
     mkdir /usr/portage
   fi
-  emerge --sync
-  set=$((`eselect profile list | grep -n "default.*plasma$" | cut -d : -f 1`-1))
+  
+  #sets flags for kde plasma packages
+  index=$((`eselect profile list | grep -n "default.*plasma$" | cut -d : -f 1`-1))
   if [[ ! $set -eq -1 ]]; then
-    eval "eselect profile set $set"
+    eselect profile set $index
   fi
-} &> /dev/null
+  
+  emerge --sync
+  emerge -qn gentoolkit
+}
+
+setup_root () {
+  echo "root:$root_passwd" | chpasswd
+  
+  # TODO: remove this, have user set up /etc/fstab before running 
+  #cp /etc/fstab /etc/fstab.copy
+  #if [[ "$cpu_type" == "i7-2600K" ]]; then
+  #  cp etc/fstab /etc/fstab
+  #  cp etc/portage/make.conf /etc/portage/make.conf
+  #else
+  #  cp etc/fstab.laptop /etc/fstab
+  #  cp etc/portage/make.conf.laptop /etc/portage/make.conf
+  #fi
+}
+
+setup_locales () {
+  echo "en_US ISO-8859-1" > /etc/locale.gen
+  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+  locale-gen
+}
+
+setup_sudo () {
+  install_check "sudo" true 
+  echo "root ALL=(ALL) ALL" > /etc/sudoers   
+  echo "$username ALL=(ALL) ALL" >> /etc/sudoers
+}
 
 setup_time () { 
   cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
-} &> /dev/null
+}
 
 setup_kernel () {
-  install_check "gentoo-sources"
-  eval "eselect kernel set 1"
+  install_check "gentoo-sources" true
+  eselect kernel set 1
   install_check "genkernel" true
-  eval "genkernel --splash --install all"
+  genkernel --splash --install all
 
-  if [[ "$wifi" == "1" ]]; then
+  if [[ "$wifi_support" == "1" ]]; then
     install_check "wicd" true 
   fi
-} &> /dev/null
+}
 
 setup_hostname () {
   echo "hostname=\"$hostname\"" > /etc/conf.d/hostname
-} &> /dev/null
+}
 
 setup_ethernet () {
   install_check "dhcpcd" true
+  #TODO: apparently the network interface name isn't always eth0...
+  # 'cat /proc/net/dev' shows net.lo and the other interface that 
+  # should be symlinked to net.lo and subsequently added to boot
   if [ ! -e /etc/init.d/net.eth0 ]; then
     if [ -e /etc/init.d/net.lo ]; then
       ln -s /etc/init.d/net.lo /etc/init.d/net.eth0
@@ -122,24 +173,25 @@ setup_ethernet () {
   else
     rc-update add net.eth0 default
   fi
-} &> /dev/null
+}
 
 setup_logger () {
   install_check "syslog-ng" true
   rc-update add syslog-ng default
-} &> /dev/null
+}
 
 setup_cron () {
   install_check "vixie-cron" true
   rc-update add vixie-cron default
-} &> /dev/null
+}
 
 setup_grub () {
+  install_check "ntfs3g" true
   install_check "grub" true
   mount /boot
   grub2-install /dev/sda
   grub2-mkconfig -o /boot/grub/grub.cfg
-} &> /dev/null
+}
 
 setup_misc () {
   echo "set bell-style none" >> /etc/inputrc
@@ -152,13 +204,13 @@ setup_misc () {
 
 main_install () {
   echo -n "0%"
-  setup_root
+  setup_portage
   echo -en "\r6%"
-  setup_sudo
+  setup_root
   echo -en "\r12%"
   setup_locales
   echo -en "\r18%"
-  setup_portage
+  setup_sudo
   echo -en "\r24%"
   setup_time
   echo -en "\r30%"
@@ -175,6 +227,7 @@ main_install () {
   setup_grub
   echo -e "\r100%"
   setup_misc
+  #TODO: need new method to create user and assign groups
 }
 
 echo -e "Installing and configuring packages.\nPlease wait..."
@@ -186,4 +239,5 @@ echo $cpu_type
 echo $username
 echo $hostname
 echo $root_passwd
-echo $wifi
+echo $wifi_support
+echo $ntfs_support
